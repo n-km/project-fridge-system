@@ -1,11 +1,24 @@
 import { Camera, ChevronLeft, ImagePlus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, invalidateInventory, photoUrl, queryClient, uploadPhoto, useAppliances, useItems, useMeta, usePresets } from "../api";
+import {
+  api,
+  invalidateInventory,
+  photoUrl,
+  queryClient,
+  uploadPhoto,
+  useAppliances,
+  useCategories,
+  useItems,
+  usePresets,
+  useUnits,
+  useUserSettings,
+} from "../api";
 import { addDaysIso, todayIso } from "../lib/dates";
-import type { Appliance, Item, Preset } from "../types";
+import type { Appliance, Compartment, Item, Preset } from "../types";
 import { useUi } from "../ui";
 import { ApplianceIcon, ErrorNote, Sheet, Spinner, useCategoryIcon } from "./common";
+import { PlacementField, type PlacementChoice } from "./extended/PlacementPicker";
 
 export function AddItemSheet() {
   const { addOpen, closeAdd } = useUi();
@@ -82,7 +95,7 @@ function PresetPicker({ onPick, onClose }: { onPick: (p: Preset | null, typed?: 
     <button
       key={p.id}
       onClick={() => onPick(p)}
-      className="flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface px-2 py-3 text-center transition-colors hover:border-steel hover:bg-steel-tint/40"
+      className="lift flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface px-2 py-3 text-center hover:border-steel"
     >
       {p.photoId ? (
         <img src={photoUrl(p.photoId)} alt="" className="size-10 rounded-lg object-cover" />
@@ -151,9 +164,11 @@ const QUICK_MHD = [
   { label: "+3 Monate", days: 90 },
 ];
 
-function suggestMhd(preset: Preset | null, appliance: Appliance | undefined, storedOn: string) {
+function suggestMhd(preset: Preset | null, appliance: Appliance | undefined, compartment: Compartment | undefined, storedOn: string) {
   if (!preset || !appliance) return "";
-  const d = appliance.type === "freezer" ? preset.shelfLifeFreezerDays : preset.shelfLifeFridgeDays;
+  // Gefrierfach in einer Kühl-Gefrier-Kombi zählt als Tiefkühler
+  const zone = compartment?.zone ?? appliance.type;
+  const d = zone === "freezer" ? preset.shelfLifeFreezerDays : preset.shelfLifeFridgeDays;
   return d != null ? addDaysIso(storedOn, d) : "";
 }
 
@@ -172,13 +187,17 @@ function ItemForm({
   onBack: () => void;
   onClose: () => void;
 }) {
-  const meta = useMeta();
+  const categories = useCategories();
+  const units = useUnits();
+  const settings = useUserSettings();
+  const extended = settings.data?.mode === "extended";
   const { toast } = useUi();
   const iconFor = useCategoryIcon();
 
   const lastAppliance = localStorageGet("pfs:lastAppliance");
   const initialAppliance =
     appliances.find((a) => a.id === ctx.applianceId) ??
+    appliances.find((a) => a.id === settings.data?.defaultApplianceId) ??
     appliances.find((a) => a.id === lastAppliance) ??
     appliances[0];
 
@@ -191,7 +210,11 @@ function ItemForm({
   const [quantity, setQuantity] = useState(preset?.defaultQuantity != null ? String(preset.defaultQuantity) : "");
   const [unit, setUnit] = useState(preset?.defaultUnit ?? "");
   const [storedOn, setStoredOn] = useState(todayIso());
-  const [bestBefore, setBestBefore] = useState(() => suggestMhd(preset, initialAppliance, todayIso()));
+  const [bestBefore, setBestBefore] = useState(() =>
+    suggestMhd(preset, initialAppliance, initialAppliance?.compartments.find((c) => c.id === ctx.compartmentId), todayIso()),
+  );
+  const [gridSize, setGridSize] = useState({ w: preset?.gridW ?? 1, h: preset?.gridH ?? 1 });
+  const [placement, setPlacement] = useState<PlacementChoice>("auto");
   const [bbTouched, setBbTouched] = useState(false);
   const [note, setNote] = useState("");
   const [photoId, setPhotoId] = useState<string | null>(preset?.photoId ?? null);
@@ -201,11 +224,12 @@ function ItemForm({
   const [saving, setSaving] = useState(false);
 
   const appliance = appliances.find((a) => a.id === applianceId);
+  const compartment = appliance?.compartments.find((c) => c.id === compartmentId);
 
-  // Vorschlag nachziehen, wenn Gerät oder Datum wechselt – solange nicht von Hand geändert
+  // Vorschlag nachziehen, wenn Gerät, Fach oder Datum wechselt – solange nicht von Hand geändert
   useEffect(() => {
-    if (!bbTouched) setBestBefore(suggestMhd(preset, appliance, storedOn));
-  }, [applianceId, storedOn]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!bbTouched) setBestBefore(suggestMhd(preset, appliance, compartment, storedOn));
+  }, [applianceId, compartmentId, storedOn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (appliance && compartmentId && !appliance.compartments.some((c) => c.id === compartmentId)) setCompartmentId("");
@@ -243,6 +267,10 @@ function ItemForm({
         storedAt: storedAt.toISOString(),
         bestBefore: bestBefore || null,
         photoId,
+        ...(extended && compartment && placement === "auto" ? { autoPlace: true, gridW: gridSize.w, gridH: gridSize.h } : {}),
+        ...(extended && compartment && placement && placement !== "auto"
+          ? { gridX: placement.x, gridY: placement.y, gridW: gridSize.w, gridH: gridSize.h }
+          : {}),
       });
       if (saveAsPreset && !preset) {
         const days = bestBefore ? Math.max(0, Math.round((+new Date(bestBefore) - +new Date(storedOn)) / 86_400_000)) : null;
@@ -252,8 +280,9 @@ function ItemForm({
           icon: icon.trim() || null,
           defaultQuantity: item.quantity,
           defaultUnit: item.unit,
-          [appliance?.type === "freezer" ? "shelfLifeFreezerDays" : "shelfLifeFridgeDays"]: days,
+          [(compartment?.zone ?? appliance?.type) === "freezer" ? "shelfLifeFreezerDays" : "shelfLifeFridgeDays"]: days,
           photoId,
+          ...(extended ? { gridW: gridSize.w, gridH: gridSize.h } : {}),
         });
         await queryClient.invalidateQueries({ queryKey: ["presets"] });
       }
@@ -348,7 +377,7 @@ function ItemForm({
             Kategorie
           </label>
           <select id="f-cat" className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {meta.data?.categories.map((c) => (
+            {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon} {c.label}
               </option>
@@ -379,6 +408,20 @@ function ItemForm({
           <input className="input mt-3" placeholder="Genauer Platz (optional), z. B. hinten links" value={position} onChange={(e) => setPosition(e.target.value)} />
         </fieldset>
 
+        {extended && compartment && (
+          <fieldset className="rounded-2xl bg-frost p-3">
+            <legend className="sr-only">Platz im Fach</legend>
+            <p className="field-label">Platz in „{compartment.name}“</p>
+            <PlacementField
+              compartment={compartment}
+              size={gridSize}
+              onSize={(w, h) => setGridSize({ w, h })}
+              value={placement}
+              onChange={setPlacement}
+            />
+          </fieldset>
+        )}
+
         {/* Menge */}
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -393,7 +436,7 @@ function ItemForm({
             </label>
             <input id="f-unit" className="input" list="units" value={unit} onChange={(e) => setUnit(e.target.value)} />
             <datalist id="units">
-              {meta.data?.units.map((u) => <option key={u} value={u} />)}
+              {units.map((u) => <option key={u} value={u} />)}
             </datalist>
           </div>
         </div>
@@ -402,7 +445,7 @@ function ItemForm({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="f-stored">
-              {appliance?.type === "freezer" ? "Eingefroren am" : "Eingelegt am"}
+              {(compartment?.zone ?? appliance?.type) === "freezer" ? "Eingefroren am" : "Eingelegt am"}
             </label>
             <input id="f-stored" type="date" className="input" value={storedOn} max={todayIso()} onChange={(e) => setStoredOn(e.target.value || todayIso())} />
           </div>

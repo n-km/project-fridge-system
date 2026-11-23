@@ -11,12 +11,16 @@ export type Toast = {
   tone?: "default" | "error";
 };
 
+export type ItemMode = "view" | "remove" | "edit";
+
 type UiState = {
   addOpen: { applianceId?: string; compartmentId?: string } | null;
   openAdd: (ctx?: { applianceId?: string; compartmentId?: string }) => void;
   closeAdd: () => void;
   itemId: string | null;
-  openItem: (id: string) => void;
+  /** Welche Ansicht des Artikel-Sheets zuerst (z. B. nach Wischgeste). */
+  itemMode: ItemMode;
+  openItem: (id: string, mode?: ItemMode) => void;
   closeItem: () => void;
   toasts: Toast[];
   toast: (t: Omit<Toast, "id">) => void;
@@ -28,6 +32,7 @@ const Ctx = createContext<UiState | null>(null);
 export function UiProvider({ children }: { children: ReactNode }) {
   const [addOpen, setAddOpen] = useState<UiState["addOpen"]>(null);
   const [itemId, setItemId] = useState<string | null>(null);
+  const [itemMode, setItemMode] = useState<ItemMode>("view");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
 
@@ -49,7 +54,11 @@ export function UiProvider({ children }: { children: ReactNode }) {
         openAdd: (c) => setAddOpen(c ?? {}),
         closeAdd: () => setAddOpen(null),
         itemId,
-        openItem: setItemId,
+        itemMode,
+        openItem: (id, mode = "view") => {
+          setItemMode(mode);
+          setItemId(id);
+        },
         closeItem: () => setItemId(null),
         toasts,
         toast,

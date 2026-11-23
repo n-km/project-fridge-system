@@ -1,5 +1,6 @@
 import { QueryClient, useQuery } from "@tanstack/react-query";
-import type { Appliance, Item, Me, Meta, Preset, Stats } from "./types";
+import { useMemo } from "react";
+import type { Appliance, Category, HouseholdSettings, Item, Me, Meta, Preset, Stats, UserSettings } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -36,6 +37,7 @@ export const api = {
   get: <T>(url: string) => request<T>("GET", url),
   post: <T>(url: string, body?: unknown) => request<T>("POST", url, body ?? {}),
   patch: <T>(url: string, body: unknown) => request<T>("PATCH", url, body),
+  put: <T>(url: string, body: unknown) => request<T>("PUT", url, body),
   del: <T>(url: string) => request<T>("DELETE", url),
 };
 
@@ -117,4 +119,87 @@ export async function uploadPhoto(file: File): Promise<string> {
   form.append("file", blob, "foto.jpg");
   const { id } = await api.post<{ id: string }>("/api/photos", form);
   return id;
+}
+
+/* ---------------- Einstellungen ---------------- */
+
+export const useUserSettings = () =>
+  useQuery({ queryKey: ["settings", "me"], queryFn: () => api.get<UserSettings>("/api/settings/me"), staleTime: 60_000 });
+
+export const useHouseholdSettings = () =>
+  useQuery({
+    queryKey: ["settings", "household"],
+    queryFn: () => api.get<HouseholdSettings>("/api/settings/household"),
+    staleTime: 60_000,
+  });
+
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? (T[K] extends unknown[] ? T[K] : DeepPartial<T[K]>) : T[K] };
+
+/** Speichert Benutzereinstellungen sofort sichtbar (optimistisch) und dann auf dem Server. */
+export async function saveUserSettings(patch: DeepPartial<UserSettings>) {
+  const key = ["settings", "me"];
+  const prev = queryClient.getQueryData<UserSettings>(key);
+  if (prev) {
+    const next = { ...prev, ...patch, extended: { ...prev.extended, ...(patch.extended ?? {}) } } as UserSettings;
+    queryClient.setQueryData(key, next);
+  }
+  try {
+    const saved = await api.patch<UserSettings>("/api/settings/me", patch);
+    queryClient.setQueryData(key, saved);
+    return saved;
+  } catch (e) {
+    if (prev) queryClient.setQueryData(key, prev);
+    throw e;
+  }
+}
+
+export async function saveHouseholdSettings(patch: Partial<HouseholdSettings>) {
+  const saved = await api.patch<HouseholdSettings>("/api/settings/household", patch);
+  queryClient.setQueryData(["settings", "household"], saved);
+  await queryClient.invalidateQueries({ queryKey: ["stats"] });
+  await queryClient.invalidateQueries({ queryKey: ["appliances"] });
+  return saved;
+}
+
+/**
+ * Alle Kategorien des Haushalts: Standardkategorien (mit eigenen Symbolen/Farben,
+ * ohne ausgeblendete) plus eigene Kategorien.
+ */
+export function useCategories(opts: { includeHidden?: boolean } = {}) {
+  const meta = useMeta();
+  const hs = useHouseholdSettings();
+  return useMemo<Category[]>(() => {
+    const s = hs.data;
+    const base = (meta.data?.categories ?? [])
+      .filter((c) => opts.includeHidden || !s?.hiddenCategories.includes(c.id))
+      .map((c) => ({ ...c, ...(s?.categoryOverrides[c.id] ?? {}) }));
+    const custom = (s?.customCategories ?? []).map((c) => ({ ...c, custom: true }));
+    // "Sonstiges" immer ans Ende
+    const other = base.filter((c) => c.id === "other");
+    return [...base.filter((c) => c.id !== "other"), ...custom, ...other];
+  }, [meta.data, hs.data, opts.includeHidden]);
+}
+
+/** Einheiten: Standard + eigene. */
+export function useUnits() {
+  const meta = useMeta();
+  const hs = useHouseholdSettings();
+  return useMemo(() => [...(meta.data?.units ?? []), ...(hs.data?.extraUnits ?? [])], [meta.data, hs.data]);
+}
+
+/** Schwelle für „bald fällig“ (Haushaltseinstellung). */
+export function useSoonDays() {
+  const hs = useHouseholdSettings();
+  const meta = useMeta();
+  return hs.data?.expiringSoonDays ?? meta.data?.expiringSoonDays ?? 3;
+}
+
+/* ---------------- Platzieren ---------------- */
+
+export type Placement = { compartmentId: string; gridX: number; gridY: number; gridW: number; gridH: number };
+
+export async function placeItem(id: string, p: Placement | { unplace: true }) {
+  const item = await api.patch<Item>(`/api/items/${id}/placement`, p);
+  await invalidateInventory();
+  return item;
 }

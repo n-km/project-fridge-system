@@ -10,6 +10,10 @@ Behalte den Überblick, was in welchem Kühlschrank und Tiefkühler liegt – un
 - **Archiv**: nichts wird beim Entnehmen gelöscht; zurücklegen oder dort endgültig löschen
 - **Statistik**: Bestand, Entnahmen pro Monat, Wegwerfquote, was am häufigsten weggeworfen wird
 - **Haushalte** mit mehreren Mitgliedern per Einladungscode
+- **Erweiterter Modus:** Kühlgeräte als 2,5D-Ansicht – Tür öffnen, Schubladen herausziehen, Artikel im
+  Raster platzieren, verschieben und in der Größe ändern (Maus, Touch, Tastatur)
+- **Geräte-Editor** mit Bauform-Vorlagen (u. a. Kühl-Gefrier-Kombi, Gefriertruhe) und frei einstellbaren Fächern
+- **Anpassbar:** hell/dunkel, Dichte, Startseite, eigene Kategorien und Einheiten, Wischgesten u. v. m.
 - Responsiv für Handy, Tablet und Desktop, als App installierbar (PWA-Manifest)
 
 ## Schnellstart mit Docker
@@ -63,20 +67,26 @@ server/                     Node.js + Fastify + Drizzle ORM (TypeScript)
   drizzle/                  SQL-Migrationen (werden beim Start automatisch ausgeführt)
   src/routes/               API: auth, appliances, items, presets, stats
   src/photos.ts             Foto-Upload: verkleinern, Vorschaubild, EXIF/GPS entfernen
+  src/grid.ts               Raster: Überschneidung, Stapeln, freier Platz
+  src/settings.ts           Einstellungen (Haushalt/Benutzer) mit Standardwerten
   src/categories.ts         Kategorien, Einheiten, Entnahmegründe
   src/api.test.ts           Integrationstests
 web/                        React + Vite + Tailwind (TypeScript)
   src/pages/                Übersicht, Gerät, Archiv, Statistik, Einstellungen, Login
   src/components/           Einlegen, Artikeldetails, Kühlgerät-Tür, Layout
+  src/components/extended/  Erweiterter Modus: 2,5D-Ansicht, Raster, Ziehen & Ablegen
   src/api.ts                API-Client und Daten-Hooks
 ```
 
 ### Datenmodell
 
 ```
-Haushalt ─┬─ Benutzer ── Sessions
-          ├─ Kühlgerät (Name, Standort, Typ) ── Fach
+Haushalt ─┬─ Benutzer ── Sessions, Benutzer-Einstellungen
+          ├─ Haushalts-Einstellungen (Kategorien, Einheiten, Bald-fällig-Schwelle)
+          ├─ Kühlgerät (Name, Standort, Typ, Bauform, Farbe)
+          │     └─ Fach (Art, Bereich, Raster Breite×Tiefe, Stapelhöhe, Höhe)
           ├─ Artikel (Gerät, Fach, Vorlage, Menge, eingelegt, MHD, Foto,
+          │           Rasterplatz x/y/Breite/Tiefe/Ebene,
           │           status: active|archived, Entnahmegrund, entnommen am)
           ├─ Vorlage (eigene; globale Vorlagen haben keinen Haushalt)
           └─ Foto
@@ -94,6 +104,9 @@ Haushalt ─┬─ Benutzer ── Sessions
 | `POST` | `/api/items/:id/restore` | Aus dem Archiv zurücklegen |
 | `DELETE` | `/api/items/:id` | Endgültig löschen (nur aus dem Archiv) |
 | `POST` | `/api/photos` | Foto hochladen (multipart) |
+| `PATCH` | `/api/items/:id/placement` | Im Raster platzieren / herausnehmen |
+| `GET` | `/api/compartments/:id/free?w=&h=` | Freien Platz finden |
+| `GET/PATCH` | `/api/settings/me` · `/api/settings/household` | Einstellungen |
 | `GET` | `/api/stats` | Statistik |
 
 ### Erweitern – Beispiel: neues Feld „Besitzer“

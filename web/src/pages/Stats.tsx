@@ -1,6 +1,6 @@
 import { AlertTriangle, Clock, Package, Table2 } from "lucide-react";
 import { useState } from "react";
-import { useMeta, useStats } from "../api";
+import { useCategories, useStats } from "../api";
 import { Empty, Spinner } from "../components/common";
 import type { Stats as StatsT } from "../types";
 
@@ -193,7 +193,7 @@ function RemovalsChart({ data }: { data: StatsT["removalsByMonth"] }) {
                       })}
                     </div>
                     {hover === i && (
-                      <div className="absolute bottom-full left-1/2 z-10 mb-2 w-max -translate-x-1/2 rounded-xl bg-ink px-3 py-2 text-xs text-white shadow-lg">
+                      <div className="absolute bottom-full left-1/2 z-10 mb-2 w-max -translate-x-1/2 rounded-xl bg-ink px-3 py-2 text-xs text-surface shadow-lg">
                         <div className="mb-1 font-semibold">{monthLabel(r.month)}</div>
                         {SERIES.map((s) => (
                           <div key={s.key} className="flex items-center gap-2">
@@ -225,7 +225,7 @@ function RemovalsChart({ data }: { data: StatsT["removalsByMonth"] }) {
 /* ---------------- Bestand nach Kategorie ---------------- */
 
 function CategoryBreakdown({ data, total }: { data: StatsT["byCategory"]; total: number }) {
-  const meta = useMeta();
+  const categories = useCategories({ includeHidden: true });
   const max = Math.max(1, ...data.map((d) => d.count));
   return (
     <section className="rounded-3xl bg-surface p-5">
@@ -235,7 +235,7 @@ function CategoryBreakdown({ data, total }: { data: StatsT["byCategory"]; total:
       ) : (
         <ul className="mt-3 space-y-2.5">
           {data.map((d) => {
-            const c = meta.data?.categories.find((x) => x.id === d.category);
+            const c = categories.find((x) => x.id === d.category);
             return (
               <li key={d.category} className="grid grid-cols-[1.5rem_8rem_1fr_2rem] items-center gap-2 text-sm">
                 <span aria-hidden>{c?.icon}</span>

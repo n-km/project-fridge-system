@@ -45,7 +45,7 @@ export function Layout() {
               end={end}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
-                  isActive ? "bg-steel-tint font-medium text-steel-dark" : "text-ink-soft hover:bg-frost"
+                  isActive ? "bg-steel-tint font-medium text-steel-dark" : "text-ink-soft hover:bg-frost hover:text-ink"
                 }`
               }
             >
@@ -74,7 +74,7 @@ export function Layout() {
         <div className="flex justify-center">
           <button
             onClick={() => openAdd()}
-            className="-mt-6 mb-1 grid size-16 place-items-center rounded-full bg-steel text-white shadow-lg ring-4 ring-frost"
+            className="-mt-6 mb-1 grid size-16 place-items-center rounded-full bg-steel text-on-steel shadow-lg ring-4 ring-frost transition-transform hover:scale-105 active:scale-95"
             aria-label="Artikel einlegen"
           >
             <Plus className="size-8" />
@@ -97,7 +97,7 @@ function TabLink({ to, label, Icon, end }: (typeof NAV)[number]) {
     <NavLink
       to={to}
       end={end}
-      className={({ isActive }) => `flex flex-col items-center gap-0.5 py-2 text-[11px] ${isActive ? "text-steel" : "text-ink-soft"}`}
+      className={({ isActive }) => `flex flex-col items-center gap-0.5 py-2 text-[11px] transition-colors active:scale-95 ${isActive ? "text-steel" : "text-ink-soft hover:text-ink"}`}
     >
       {({ isActive }) => (
         <>

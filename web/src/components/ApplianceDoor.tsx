@@ -13,14 +13,22 @@ export function ApplianceDoor({ appliance }: { appliance: Appliance }) {
   return (
     <Link
       to={`/geraet/${appliance.id}`}
-      className={`group relative flex aspect-[4/5] flex-col rounded-[28px] border-2 p-4 pr-8 transition-transform active:scale-[0.98] ${
+      viewTransition
+      className={`lift group relative flex aspect-[4/5] flex-col rounded-[28px] border-2 p-4 pr-8 ${
         freezer ? "border-ice-ink/15 bg-ice" : "border-steel/15 bg-steel-tint"
       }`}
+      style={{
+        // Tür „fliegt“ beim Öffnen in den Kopf der Geräteansicht
+        viewTransitionName: `door-${appliance.id}`,
+        ...(appliance.color
+          ? { background: `color-mix(in oklab, ${appliance.color} 28%, var(--surface))`, borderColor: `color-mix(in oklab, ${appliance.color} 45%, transparent)` }
+          : {}),
+      }}
     >
       {/* Griff */}
       <span
-        className={`absolute top-1/2 right-3 h-1/3 w-2 -translate-y-1/2 rounded-full transition-colors ${
-          freezer ? "bg-ice-ink/25 group-hover:bg-ice-ink/45" : "bg-steel/25 group-hover:bg-steel/45"
+        className={`absolute top-1/2 right-3 h-1/3 w-2 -translate-y-1/2 rounded-full transition-[background-color,height] duration-200 group-hover:h-[38%] ${
+          freezer ? "bg-ice-ink/25 group-hover:bg-ice-ink/50" : "bg-steel/25 group-hover:bg-steel/50"
         }`}
         aria-hidden
       />
@@ -36,7 +44,7 @@ export function ApplianceDoor({ appliance }: { appliance: Appliance }) {
 
       <span className="mt-auto">
         <span className="block text-3xl font-semibold tabular-nums">{c.active}</span>
-        <span className="block text-sm text-ink-soft">{c.active === 1 ? "Artikel" : "Artikel"}</span>
+        <span className="block text-sm text-ink-soft">Artikel</span>
         {(c.expired > 0 || c.expiringSoon > 0) && (
           <span className="mt-2 flex flex-wrap gap-1.5">
             {c.expired > 0 && (

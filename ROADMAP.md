@@ -3,7 +3,7 @@
 Geplante Weiterentwicklung von PFS. Jede Stufe wird als eigene, stabile Version veröffentlicht
 (siehe [CHANGELOG](CHANGELOG.md) und [Semantic Versioning](README.md#versionen--releases)).
 
-**Stand:** v1.0.0 veröffentlicht (23.11.2026)
+**Stand:** v1.1.0 fertig, v1.0.0 veröffentlicht (23.11.2026)
 
 ## Leitlinien
 
@@ -24,108 +24,28 @@ Geplante Weiterentwicklung von PFS. Jede Stufe wird als eigene, stabile Version 
 | Version | Inhalt | Status |
 |---|---|---|
 | **1.0.0** | Erste Version | ✅ veröffentlicht |
-| **1.1.0** | Politur der normalen Ansicht | geplant |
-| **1.2.0** | Einstellungen für Haushalt und Benutzer | geplant |
-| **1.3.0** | Geräte-Editor und Raster-Datenmodell | geplant |
-| **1.4.0** | Erweiterter Modus: 2,5D-Ansicht | geplant |
-| **1.5.0** | Erweiterter Modus: Platzieren im Raster | geplant |
-| **1.6.0** | Extras für den erweiterten Modus | Ideen |
+| **1.1.0** | Politur, Einstellungen, Geräte-Editor, erweiterter Modus (2,5D, Raster, Platzieren) | ✅ fertig |
+| **1.2.0** | Extras für den erweiterten Modus | Ideen |
 
----
+Ursprünglich waren die Inhalte von 1.1.0 auf die Versionen 1.1.0 bis 1.5.0 verteilt;
+sie wurden auf Wunsch gemeinsam in 1.1.0 umgesetzt (Details im [CHANGELOG](CHANGELOG.md)).
 
-## 1.1.0 – Politur der normalen Ansicht
+### Umgesetzt in 1.1.0
 
-Ziel: Die App fühlt sich hochwertiger an, ohne neue Bildschirme oder Schalter.
+- [x] Hover-, Fokus- und Druckzustände, Tür-Öffnen-Übergang, Wischgesten, Ladeplatzhalter, dunkles Design,
+  „Bewegung reduzieren“
+- [x] Einstellungen für Haushalt (Kategorien, Einheiten, Bald-fällig-Schwelle) und Benutzer
+  (Design, Dichte, Startseite, Standardgerät, Darstellung, erweiterter Modus)
+- [x] Geräte-Editor mit Bauform-Vorlagen, Fach-Arten, Gefrierbereich, Raster und Stapelhöhe
+- [x] 2,5D-Ansicht: Tür/Deckel öffnen, Schubladen herausziehen, Türfächer, Truhe von oben, Ampel, Suche
+- [x] Platzieren im Raster: Ziehen & Ablegen (Maus, Touch, Tastatur), Größe ändern, Stapeln,
+  Kollisionsprüfung, „Alle einsortieren“, Platzwahl beim Einlegen
 
-- [ ] **Hover-, Fokus- und Druckzustände** für alle bedienbaren Elemente
-  (Kühlgerät-Türen heben sich leicht an, Zeilen und Kacheln reagieren, Knöpfe geben beim Drücken nach)
-- [ ] **Tür-Öffnen-Übergang:** Antippen eines Kühlgeräts dreht die Tür kurz auf und führt in die Geräteansicht
-  (View Transitions API, mit Rückfall auf einfaches Überblenden)
-- [ ] **Wischgesten** auf Touch-Geräten: Artikel nach links wischen → entnehmen, nach rechts → bearbeiten;
-  bleibt per Knopf erreichbar
-- [ ] **Ladeplatzhalter** (Skeletons) statt Kreisel für Listen und Türen
-- [ ] **Bestätigende Mikro-Animationen:** Artikel gleitet beim Entnehmen aus der Liste, Zähler zählen hoch
-- [ ] **Dunkles Design** (folgt der Systemeinstellung)
-- [ ] **Bewegung reduzieren** respektieren: alle Animationen abschaltbar über die Systemeinstellung
+**Abweichung vom Plan:** Statt `@dnd-kit` nutzt das Ziehen eine eigene, kleine Lösung mit
+`document.elementsFromPoint`. Sie funktioniert zuverlässig auf den perspektivisch gekippten Flächen und
+braucht keine zusätzliche Abhängigkeit.
 
-**Fertig, wenn:** alle Interaktionen sichtbares Feedback geben, Lighthouse-Barrierefreiheit ≥ 95,
-keine Animation länger als 250 ms, flüssig (60 fps) auf einem Mittelklasse-Handy.
-
-## 1.2.0 – Einstellungen für Haushalt und Benutzer
-
-Grundlage für „so viel wie möglich anpassbar“.
-
-**Haushalt** (gilt für alle Mitglieder):
-- [ ] Eigene Kategorien mit Symbol und Farbe (Standardkategorien ausblendbar)
-- [ ] Eigene Einheiten und Entnahmegründe
-- [ ] Ab wie vielen Tagen ein Artikel „bald fällig“ ist
-- [ ] Standard-Haltbarkeit pro Kategorie, falls keine Vorlage gewählt wurde
-
-**Benutzer** (gilt nur für mich):
-- [ ] Erweiterter Modus an/aus (vorbereitet, Inhalt folgt ab 1.4.0)
-- [ ] Design: hell / dunkel / automatisch
-- [ ] Dichte: komfortabel / kompakt
-- [ ] Startseite: Bereiche ein-/ausblenden und sortieren („Muss bald weg“, Kühlgeräte, zuletzt eingelegt …)
-- [ ] Standard-Kühlgerät beim Einlegen
-- [ ] Darstellung von Artikeln: Foto / Symbol
-
-**Technik:** Tabellen `household_settings` und `user_settings` (JSONB, per zod validiert, mit Standardwerten
-im Code); API `GET/PATCH /api/settings/household` und `/api/settings/me`.
-
-## 1.3.0 – Geräte-Editor und Raster-Datenmodell
-
-Kühlgeräte so beschreiben, wie sie wirklich aufgebaut sind. In der normalen Ansicht weiterhin nutzbar
-(Fächer erscheinen dort wie bisher als Liste).
-
-- [ ] **Bauform-Vorlagen:** Standard-Kühlschrank, Kühl-Gefrier-Kombi, Side-by-Side, Gefrierschrank mit
-  Schubladen, Gefriertruhe mit Körben, Getränke-/Weinkühlschrank
-- [ ] **Bereiche:** Ein Gerät kann mehrere Bereiche haben (z. B. Kombi = Kühlteil + Gefrierteil),
-  jeder mit eigenem Typ für den MHD-Vorschlag
-- [ ] **Fach-Typen:** Glasboden, Schublade, Türfach, Korb, Flaschenablage
-- [ ] **Fach-Raster:** Breite × Tiefe in Zellen (z. B. 6 × 3), Höhe in Stufen, maximale Stapelhöhe
-- [ ] **Editor:** Fächer per Ziehen sortieren, Größe per Regler, Live-Vorschau
-- [ ] Farbe pro Gerät
-
-**Datenmodell (alle neuen Felder optional, bestehende Daten bleiben gültig):**
-
-```
-appliance_sections (id, appliance_id, name, type: fridge|freezer, sort_order)
-compartments       + section_id, kind: shelf|drawer|door|basket|bottle,
-                     grid_cols, grid_rows, height, max_stack
-items              + grid_x, grid_y, grid_w, grid_h, stack_level   (null = nicht platziert)
-```
-
-Eine Migration legt für jedes bestehende Gerät automatisch einen Bereich an.
-
-## 1.4.0 – Erweiterter Modus: 2,5D-Ansicht
-
-Zum Ansehen und Finden. Platzieren folgt in 1.5.0.
-
-- [ ] **Geschlossene Tür** mit Etikett wie in der normalen Ansicht; Antippen öffnet sie perspektivisch
-- [ ] **Innenraum:** Fächer übereinander in leichter Perspektive, Artikel als Kacheln im Raster
-  (Foto, Symbol oder Block in Kategoriefarbe)
-- [ ] **Schubladen und Körbe herausziehen** (Antippen oder Ziehen); herausgezogen von oben sichtbar
-- [ ] **Truhe:** Ansicht von oben, Körbe herausheben
-- [ ] **Ampel im Raum:** Abgelaufenes und bald Fälliges ist farbig markiert (mit Symbol, nicht nur Farbe)
-- [ ] **„Wo ist das?“:** Treffer der Suche werden im Gerät hervorgehoben, das Fach öffnet sich
-- [ ] Artikel ohne Rasterplatz erscheinen in einer Ablage „Noch nicht platziert“
-- [ ] Gesamte Ansicht per Tastatur bedienbar; Screenreader lesen Fach für Fach vor
-
-## 1.5.0 – Erweiterter Modus: Platzieren im Raster
-
-- [ ] **Drag & Drop** von Artikeln auf Rasterzellen; Maus, Touch (langes Drücken) und Tastatur (Pfeiltasten)
-- [ ] **Größe anpassen:** Ecke ziehen oder Schnellwahl (1 × 1, 2 × 1, 2 × 2 …); Vorlagen merken sich
-  die Standardgröße
-- [ ] **Stapeln** bis zur maximalen Stapelhöhe des Fachs
-- [ ] **Umlagern** zwischen Fächern und Geräten per Ziehen
-- [ ] **Kollisionsprüfung** im Backend: belegte Zellen werden abgelehnt, Vorschlag für freien Platz
-- [ ] **Beim Einlegen** direkt einen Platz im Raster wählen („Wo ist noch Platz?“)
-- [ ] Rückgängig für Verschieben
-
-**Technik:** Drag & Drop mit `@dnd-kit` (barrierefrei, Touch-fähig);
-API `PATCH /api/items/:id/placement`.
-
-## 1.6.0 – Extras (Ideen, noch nicht festgelegt)
+## 1.2.0 – Extras (Ideen, noch nicht festgelegt)
 
 - **Füllstand** pro Fach und Gerät
 - **Wer zuerst rein, kommt zuerst raus:** ältere Artikel werden nach vorne vorgeschlagen

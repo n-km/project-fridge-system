@@ -1,7 +1,7 @@
 {
   "name": "pfs",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Project Fridge System – Überblick über Kühlschränke und Tiefkühler",
   "workspaces": [
     "server",
