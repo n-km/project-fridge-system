@@ -2,17 +2,17 @@ import { and, asc, eq, ilike, isNull, or } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireUser } from "../auth.js";
-import { CATEGORY_IDS } from "../categories.js";
 import type { Db } from "../db/index.js";
 import { presets } from "../db/schema.js";
 import { HttpError, notFound } from "../http.js";
 import { assertOwnedPhoto, deletePhotoIfUnused } from "../photos.js";
+import { assertCategory } from "../settings.js";
 
 const days = z.number().int().min(0).max(3650).nullish();
 
 const presetBody = z.object({
   name: z.string().trim().min(1).max(80),
-  category: z.enum(CATEGORY_IDS).default("other"),
+  category: z.string().min(1).max(40).default("other"),
   icon: z.string().trim().max(16).nullish(),
   defaultQuantity: z.number().positive().max(1_000_000).nullish(),
   defaultUnit: z.string().trim().max(20).nullish(),
@@ -20,6 +20,8 @@ const presetBody = z.object({
   shelfLifeFreezerDays: days,
   barcode: z.string().trim().max(64).nullish(),
   photoId: z.uuid().nullish(),
+  gridW: z.number().int().min(1).max(12).nullish(),
+  gridH: z.number().int().min(1).max(8).nullish(),
 });
 
 export async function presetRoutes(app: FastifyInstance, db: Db) {
@@ -40,6 +42,7 @@ export async function presetRoutes(app: FastifyInstance, db: Db) {
     const user = requireUser(req);
     const body = presetBody.parse(req.body);
     if (body.photoId) await assertOwnedPhoto(db, user.householdId, body.photoId);
+    await assertCategory(db, user.householdId, body.category);
     const [p] = await db
       .insert(presets)
       .values({ ...body, householdId: user.householdId })
@@ -62,6 +65,7 @@ export async function presetRoutes(app: FastifyInstance, db: Db) {
     const body = presetBody.partial().parse(req.body);
     const old = await getOwnPreset(user.householdId, id);
     if (body.photoId) await assertOwnedPhoto(db, user.householdId, body.photoId);
+    await assertCategory(db, user.householdId, body.category);
     const [p] = await db.update(presets).set(body).where(eq(presets.id, id)).returning();
     if (body.photoId !== undefined && old.photoId !== body.photoId)
       await deletePhotoIfUnused(db, old.photoId);

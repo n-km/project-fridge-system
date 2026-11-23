@@ -1,11 +1,12 @@
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { requireUser } from "../auth.js";
-import { CATEGORIES, REMOVAL_REASONS, UNITS } from "../categories.js";
+import { APPLIANCE_TEMPLATES, CATEGORIES, COMPARTMENT_KINDS, REMOVAL_REASONS, UNITS } from "../categories.js";
 import { config } from "../config.js";
 import { addDays, today } from "../dates.js";
 import type { Db } from "../db/index.js";
 import { items } from "../db/schema.js";
+import { getHouseholdSettings } from "../settings.js";
 
 export async function statsRoutes(app: FastifyInstance, db: Db) {
   /** Stammdaten für das Frontend. */
@@ -16,13 +17,16 @@ export async function statsRoutes(app: FastifyInstance, db: Db) {
     removalReasons: REMOVAL_REASONS,
     expiringSoonDays: config.expiringSoonDays,
     allowRegistration: config.allowRegistration,
+    compartmentKinds: COMPARTMENT_KINDS,
+    applianceTemplates: APPLIANCE_TEMPLATES,
   }));
 
   app.get("/api/stats", async (req) => {
     const user = requireUser(req);
     const hh = eq(items.householdId, user.householdId);
     const t = today();
-    const soon = addDays(t, config.expiringSoonDays);
+    const { expiringSoonDays } = await getHouseholdSettings(db, user.householdId);
+    const soon = addDays(t, expiringSoonDays);
 
     const [totals] = await db
       .select({
