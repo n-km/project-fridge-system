@@ -12,6 +12,10 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/):
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- `ROADMAP.md` mit den geplanten Versionen 1.1.0 bis 1.6.0
+
 ## [1.0.0] – 2026-11-23
 
 Erste Version.

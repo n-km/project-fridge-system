@@ -118,12 +118,6 @@ docker compose up -d --build
 Neue Version veröffentlichen: Version setzen (`npm version 1.1.0 --no-git-tag-version --workspaces --include-workspace-root`),
 CHANGELOG ergänzen, committen, Tag `v1.1.0` setzen und pushen.
 
-## Ideen für später
+## Weiterentwicklung
 
-- Push-Benachrichtigungen bei bald fälligen Artikeln (Service Worker + Web Push)
-- Barcode-Scan mit Open Food Facts
-- QR-Etiketten für Gefrierdosen
-- MHD per Texterkennung vom Foto lesen
-- Einkaufsliste und Rezeptideen aus bald fälligen Artikeln
-- Mehrsprachigkeit (Texte stehen aktuell direkt auf Deutsch in den Komponenten)
-- Dunkles Design
+Geplante Versionen und Ideen stehen in der [ROADMAP](ROADMAP.md).
