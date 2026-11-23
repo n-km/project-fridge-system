@@ -1,0 +1,13 @@
+{
+  "name": "PFS – Project Fridge System",
+  "short_name": "PFS",
+  "description": "Was liegt in welchem Kühlschrank – und was muss bald weg?",
+  "lang": "de",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EEF3F2",
+  "theme_color": "#2D6A88",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

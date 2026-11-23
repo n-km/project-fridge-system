@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pfs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pfs}
+      POSTGRES_DB: pfs
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pfs"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://pfs:${POSTGRES_PASSWORD:-pfs}@db:5432/pfs
+      # Auf true setzen, sobald die App hinter HTTPS (Reverse Proxy) läuft
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Auf false setzen, wenn nur noch per Einladungscode registriert werden soll
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "${PORT:-3000}:3000"
+
+volumes:
+  db-data:
+  uploads:

@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@import "@fontsource/rubik/400.css";
+@import "@fontsource/rubik/500.css";
+@import "@fontsource/rubik/600.css";
+@import "@fontsource/caveat/600.css";
+
+/*
+ * Design-Tokens
+ *  frost  – kühler Grundton der App
+ *  ink    – Text
+ *  steel  – Hauptfarbe (Aktionen, Kühlschrank)
+ *  tape   – Klebeband-Etikett (das eine auffällige Element)
+ *  fresh / soon / expired – Haltbarkeits-Ampel, immer mit Icon + Text
+ */
+@theme {
+  --font-sans: "Rubik", ui-sans-serif, system-ui, sans-serif;
+  --font-hand: "Caveat", "Comic Sans MS", cursive;
+
+  --color-frost: #eef3f2;
+  --color-frost-deep: #dde7e6;
+  --color-surface: #ffffff;
+  --color-ink: #1f2b30;
+  --color-ink-soft: #52636a;
+  --color-ink-faint: #8a9a9f;
+  --color-line: #d3dfdf;
+
+  --color-steel: #2d6a88;
+  --color-steel-dark: #22546d;
+  --color-steel-tint: #dcebf0;
+  --color-ice: #e3e7f7;
+  --color-ice-ink: #3f4f96;
+
+  --color-tape: #f3df8e;
+  --color-tape-edge: #e3c962;
+
+  --color-fresh: #2e8b57;
+  --color-fresh-tint: #e1f1e7;
+  --color-soon: #b77400;
+  --color-soon-tint: #fbefd6;
+  --color-expired: #c7422e;
+  --color-expired-tint: #f8e1dc;
+
+  --color-given: #4f6fd0;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "tnum" 0;
+  }
+  body {
+    @apply bg-frost text-ink font-sans antialiased;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-steel);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 font-medium transition-colors disabled:opacity-50;
+  min-height: 44px;
+}
+
+@layer components {
+  /* Klebeband-Etikett, wie auf Gefrierdosen */
+  .tape {
+    @apply font-hand text-ink inline-block px-3 leading-tight;
+    background: var(--color-tape);
+    border-left: 3px dashed var(--color-tape-edge);
+    border-right: 3px dashed var(--color-tape-edge);
+    transform: rotate(-1.5deg);
+    box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
+  }
+
+  .btn-primary {
+    @apply btn bg-steel text-white hover:bg-steel-dark;
+  }
+  .btn-quiet {
+    @apply btn bg-surface text-ink border border-line hover:bg-frost;
+  }
+  .btn-danger {
+    @apply btn bg-expired text-white hover:brightness-95;
+  }
+
+  .field-label {
+    @apply block text-sm font-medium text-ink-soft mb-1;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-3 text-ink placeholder:text-ink-faint focus:border-steel focus:outline-none;
+    min-height: 44px;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-sm text-ink transition-colors;
+    min-height: 36px;
+  }
+  .chip[aria-pressed="true"] {
+    @apply border-steel bg-steel-tint text-steel-dark;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+@keyframes toast-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
