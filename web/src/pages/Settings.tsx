@@ -496,6 +496,7 @@ function PresetEdit({ preset, onClose }: { preset: Preset | null; onClose: () =>
 
 function AccountSection() {
   const me = useMe();
+  const meta = useMeta();
   return (
     <Section title="Konto">
       <div className="flex flex-wrap items-center gap-3 rounded-3xl bg-surface p-5">
@@ -515,6 +516,7 @@ function AccountSection() {
           <LogOut className="size-4" /> Abmelden
         </button>
       </div>
+      {meta.data?.version && <p className="mt-6 text-center text-sm text-ink-faint">PFS Version {meta.data.version}</p>}
     </Section>
   );
 }

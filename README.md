@@ -103,6 +103,21 @@ Haushalt ─┬─ Benutzer ── Sessions
 3. Typ in `web/src/types.ts` und Formular in `web/src/components/AddItemSheet.tsx` ergänzen
 4. Test in `server/src/api.test.ts` schreiben
 
+## Versionen & Releases
+
+PFS folgt [Semantic Versioning](https://semver.org/lang/de/) (`MAJOR.MINOR.PATCH`), alle Änderungen stehen im [CHANGELOG](CHANGELOG.md).
+Releases werden als Git-Tag `vX.Y.Z` mit Release-Notes auf GitHub veröffentlicht. Die laufende Version steht in den Einstellungen und unter `/api/health`.
+
+Eine bestimmte Version starten:
+
+```bash
+git checkout v1.0.0
+docker compose up -d --build
+```
+
+Neue Version veröffentlichen: Version setzen (`npm version 1.1.0 --no-git-tag-version --workspaces --include-workspace-root`),
+CHANGELOG ergänzen, committen, Tag `v1.1.0` setzen und pushen.
+
 ## Ideen für später
 
 - Push-Benachrichtigungen bei bald fälligen Artikeln (Service Worker + Web Push)

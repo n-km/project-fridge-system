@@ -39,7 +39,7 @@ export async function buildApp(db: Db, opts: { logger?: boolean } = {}) {
     }
   });
 
-  app.get("/api/health", async () => ({ ok: true }));
+  app.get("/api/health", async () => ({ ok: true, version: config.version }));
 
   await authRoutes(app, db);
   await applianceRoutes(app, db);

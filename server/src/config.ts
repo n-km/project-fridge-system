@@ -1,8 +1,15 @@
+import fs from "node:fs";
 import path from "node:path";
 
 const env = process.env;
 
+/** Version aus server/package.json (funktioniert aus src/ und dist/). */
+const pkg = JSON.parse(
+  fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
 export const config = {
+  version: pkg.version,
   port: Number(env.PORT ?? 3000),
   host: env.HOST ?? "0.0.0.0",
   databaseUrl: env.DATABASE_URL ?? "postgres://pfs:pfs@localhost:5432/pfs",

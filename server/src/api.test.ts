@@ -257,6 +257,13 @@ describe("PFS API", () => {
     expect((await alice.patch(`/api/presets/${global.id}`, { name: "x" })).statusCode).toBe(403);
   });
 
+  it("meldet die Version aus package.json", async () => {
+    const pkg = JSON.parse(await fs.readFile(new URL("../package.json", import.meta.url), "utf8"));
+    const health = await app.inject({ method: "GET", url: "/api/health" });
+    expect(health.json()).toEqual({ ok: true, version: pkg.version });
+    expect((await alice.get("/api/meta")).json().version).toBe(pkg.version);
+  });
+
   it("blockiert schreibende Anfragen von fremdem Origin", async () => {
     const res = await app.inject({
       method: "POST",
