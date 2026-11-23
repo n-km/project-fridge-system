@@ -41,6 +41,7 @@ function agent() {
     get: (u: string) => call("GET", u),
     post: (u: string, b?: unknown) => call("POST", u, b ?? {}),
     patch: (u: string, b: unknown) => call("PATCH", u, b),
+    put: (u: string, b: unknown) => call("PUT", u, b),
     del: (u: string) => call("DELETE", u),
     get cookie() {
       return cookie;
@@ -272,5 +273,131 @@ describe("PFS API", () => {
       headers: { cookie: alice.cookie, origin: "https://evil.example", host: "pfs.local" },
     });
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe("1.1.0 – Einstellungen, Raster, erweiterter Modus", () => {
+  const u = agent();
+  const other = agent(); // fremder Haushalt
+  let combo: any;
+  let shelfId = "";
+
+  it("liefert Standard-Einstellungen und speichert Teil-Updates", async () => {
+    await u.post("/api/auth/register", { email: "raster@example.org", password: "geheim123", displayName: "Rasta" });
+    await other.post("/api/auth/register", { email: "fremd@example.org", password: "geheim123", displayName: "Fremd" });
+    await other.post("/api/appliances", { name: "Fremder", type: "fridge" });
+    let s = (await u.get("/api/settings/me")).json();
+    expect(s).toMatchObject({ mode: "standard", theme: "auto", density: "comfortable", extended: { perspective: "subtle", cellSize: "M" } });
+    expect(s.home.map((h: any) => h.id)).toEqual(["due", "appliances", "recent", "stats"]);
+
+    s = (await u.patch("/api/settings/me", { mode: "extended", extended: { cellSize: "L" } })).json();
+    expect(s.mode).toBe("extended");
+    // Teil-Update von „extended“ darf andere Felder nicht zurücksetzen
+    s = (await u.patch("/api/settings/me", { extended: { perspective: "strong" } })).json();
+    expect(s.extended).toMatchObject({ cellSize: "L", perspective: "strong", tileStyle: "photo" });
+
+    expect((await u.patch("/api/settings/me", { theme: "pink" })).statusCode).toBe(400);
+    expect((await u.patch("/api/settings/me", { tippfehler: true })).statusCode).toBe(400);
+    expect((await u.patch("/api/settings/me", { extended: { cellSize: "XXL" } })).statusCode).toBe(400);
+  });
+
+  it("Haushalt: eigene Kategorie und Bald-fällig-Schwelle", async () => {
+    const cat = (await u.post("/api/settings/household/categories", { label: "Babynahrung", icon: "🍼", color: "#AABBCC" })).json();
+    expect(cat.id).toMatch(/^c_/);
+    const hs = (await u.patch("/api/settings/household", { expiringSoonDays: 7, hiddenCategories: ["fish"] })).json();
+    expect(hs.customCategories).toHaveLength(1);
+    expect(hs.expiringSoonDays).toBe(7);
+
+    combo = (await u.post("/api/appliances", { name: "Kombi", template: "combo" })).json();
+    combo = (await u.get(`/api/appliances/${combo.id}`)).json();
+    shelfId = combo.compartments[0].id;
+    let r = await u.post("/api/items", { applianceId: combo.id, name: "Brei", category: cat.id, bestBefore: addDays(today(), 6) });
+    expect(r.statusCode).toBe(201);
+    expect((await u.post("/api/items", { applianceId: combo.id, name: "X", category: "gibtsnicht" })).statusCode).toBe(400);
+    // 6 Tage ≤ 7 → „bald fällig“ dank Haushalts-Einstellung
+    expect((await u.get("/api/items?expiry=soon")).json().map((i: any) => i.name)).toContain("Brei");
+    expect((await u.get("/api/stats")).json().totals.expiringSoon).toBe(1);
+    // Andere Haushalte kennen die Kategorie nicht
+    expect((await other.post("/api/items", { applianceId: (await other.get("/api/appliances")).json()[0].id, name: "x", category: cat.id })).statusCode).toBe(400);
+  });
+
+  it("Vorlage Kombi: Fächer mit Art, Raster und Gefrierzone", async () => {
+    expect(combo.type).toBe("fridge");
+    expect(combo.compartments).toHaveLength(9);
+    const door = combo.compartments.find((c: any) => c.kind === "door");
+    expect(door).toMatchObject({ gridRows: 1, maxStack: 1 });
+    const frz = combo.compartments.find((c: any) => c.zone === "freezer");
+    expect(frz).toMatchObject({ kind: "drawer", gridCols: 5, maxStack: 3 });
+
+    // MHD-Vorschlag im Gefrierfach der Kombi = Tiefkühl-Haltbarkeit
+    const hack = (await u.get("/api/presets?q=Hackfleisch")).json()[0];
+    const r = (await u.post("/api/items", { applianceId: combo.id, compartmentId: frz.id, presetId: hack.id })).json();
+    expect(r.bestBefore).toBe(addDays(today(), 90));
+    const meta = (await u.get("/api/meta")).json();
+    expect(meta.applianceTemplates.map((t: any) => t.id)).toEqual(["fridge", "combo", "freezer", "chest", "drinks"]);
+    const chest = (await u.post("/api/appliances", { name: "Truhe", template: "chest" })).json();
+    expect(chest).toMatchObject({ type: "freezer", layout: "chest" });
+  });
+
+  it("Platzieren, Stapeln, Kollision, freier Platz", async () => {
+    const mk = async (name: string, extra = {}) =>
+      (await u.post("/api/items", { applianceId: combo.id, compartmentId: shelfId, name, category: "other", ...extra })).json();
+    const a = await mk("A", { gridX: 0, gridY: 0, gridW: 2, gridH: 2 });
+    expect(a).toMatchObject({ gridX: 0, gridY: 0, gridW: 2, gridH: 2, stackLevel: 0 });
+    const b = await mk("B");
+    // B auf A stapeln (überlappt teilweise)
+    let r = await u.patch(`/api/items/${b.id}/placement`, { compartmentId: shelfId, gridX: 1, gridY: 1, gridW: 1, gridH: 1 });
+    expect(r.json().stackLevel).toBe(1);
+    // Dritte Ebene geht nicht (maxStack 2)
+    const c = await mk("C");
+    r = await u.patch(`/api/items/${c.id}/placement`, { compartmentId: shelfId, gridX: 1, gridY: 1, gridW: 1, gridH: 1 });
+    expect(r.statusCode).toBe(409);
+    expect(r.json().error).toContain("höchstens 2");
+    // Außerhalb des Rasters
+    r = await u.patch(`/api/items/${c.id}/placement`, { compartmentId: shelfId, gridX: 5, gridY: 0, gridW: 2, gridH: 1 });
+    expect(r.statusCode).toBe(400);
+    // Automatisch platzieren: erster freier Bodenplatz rechts von A
+    const d = await mk("D", { autoPlace: true, gridW: 2, gridH: 1 });
+    expect(d).toMatchObject({ gridX: 2, gridY: 0, stackLevel: 0 });
+    // Nächster freier Bodenplatz für 2×1: rechts neben D
+    expect((await u.get(`/api/compartments/${shelfId}/free?w=2&h=1`)).json().spot).toMatchObject({ x: 4, y: 0, level: 0 });
+    // Ganzes Fach (6×3) läge auf B (Ebene 1) → Ebene 2 > maxStack → kein Platz
+    expect((await u.get(`/api/compartments/${shelfId}/free?w=6&h=3`)).json().spot).toBeNull();
+
+    // A entnehmen → B rutscht auf den Boden
+    await u.post(`/api/items/${a.id}/remove`, { reason: "consumed" });
+    expect((await u.get(`/api/items/${b.id}`)).json().stackLevel).toBe(0);
+    // Zurücklegen: A bekommt seinen Platz zurück, liegt jetzt aber auf B
+    r = await u.post(`/api/items/${a.id}/restore`);
+    expect(r.json()).toMatchObject({ gridX: 0, gridY: 0, stackLevel: 1 });
+
+    // Fach verkleinern → D liegt außerhalb und wird aus dem Raster genommen
+    await u.patch(`/api/compartments/${shelfId}`, { gridCols: 2 });
+    expect((await u.get(`/api/items/${d.id}`)).json().gridX).toBeNull();
+
+    // In anderes Fach verschieben (per Placement) → Gerät/Fach werden übernommen
+    const frz = combo.compartments.find((x: any) => x.zone === "freezer");
+    r = await u.patch(`/api/items/${b.id}/placement`, { compartmentId: frz.id, gridX: 4, gridY: 2, gridW: 1, gridH: 1 });
+    expect(r.json()).toMatchObject({ compartmentId: frz.id, stackLevel: 0 });
+    // A fällt wieder auf den Boden
+    expect((await u.get(`/api/items/${a.id}`)).json().stackLevel).toBe(0);
+
+    r = await u.patch(`/api/items/${b.id}/placement`, { unplace: true });
+    expect(r.json().gridX).toBeNull();
+
+    // Fremde Fächer bleiben tabu
+    const foreign = (await other.get("/api/appliances")).json()[0];
+    expect((await u.patch(`/api/items/${b.id}/placement`, { compartmentId: foreign.compartments[0].id, gridX: 0, gridY: 0, gridW: 1, gridH: 1 })).statusCode).toBe(404);
+  });
+
+  it("Fächer sortieren und bearbeiten", async () => {
+    const ids = combo.compartments.map((c: any) => c.id).reverse();
+    expect((await u.put(`/api/appliances/${combo.id}/compartments/order`, { ids })).statusCode).toBe(200);
+    const after = (await u.get(`/api/appliances/${combo.id}`)).json();
+    expect(after.compartments.map((c: any) => c.id)).toEqual(ids);
+    expect((await u.put(`/api/appliances/${combo.id}/compartments/order`, { ids: ids.slice(1) })).statusCode).toBe(400);
+    const r = await u.patch(`/api/compartments/${ids[0]}`, { kind: "basket", height: 4, zone: null });
+    expect(r.json()).toMatchObject({ kind: "basket", height: 4, zone: null });
+    expect((await u.patch(`/api/compartments/${ids[0]}`, { gridCols: 99 })).statusCode).toBe(400);
   });
 });

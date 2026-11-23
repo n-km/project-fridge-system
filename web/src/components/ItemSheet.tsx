@@ -1,20 +1,23 @@
 import { ArchiveRestore, Camera, MapPin, PackageMinus, Pencil, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { api, invalidateInventory, photoUrl, queryClient, uploadPhoto, useAppliances, useItem, useMeta } from "../api";
+import { api, invalidateInventory, photoUrl, queryClient, uploadPhoto, useAppliances, useCategories, useItem, useMeta, useUnits, useUserSettings } from "../api";
+import { PlacementEditor } from "./extended/PlacementPicker";
 import { formatDate, formatQuantity, relativeDays } from "../lib/dates";
 import type { Item, RemovalReason } from "../types";
-import { useUi } from "../ui";
-import { ApplianceIcon, ErrorNote, ExpiryBadge, Sheet, Spinner, useCategoryIcon } from "./common";
+import { useUi, type ItemMode } from "../ui";
+import { ApplianceIcon, ErrorNote, ExpiryBadge, Sheet, Spinner, useCategoryIcon, useCategoryInfo } from "./common";
 
 export function ItemSheet() {
-  const { itemId, closeItem } = useUi();
+  const { itemId, itemMode, closeItem } = useUi();
   if (!itemId) return null;
-  return <ItemSheetInner id={itemId} onClose={closeItem} />;
+  return <ItemSheetInner key={itemId + itemMode} id={itemId} initialMode={itemMode} onClose={closeItem} />;
 }
 
-function ItemSheetInner({ id, onClose }: { id: string; onClose: () => void }) {
+function ItemSheetInner({ id, initialMode, onClose }: { id: string; initialMode: ItemMode; onClose: () => void }) {
   const item = useItem(id);
-  const [mode, setMode] = useState<"view" | "remove" | "edit">("view");
+  const [mode, setMode] = useState<ItemMode>(initialMode);
+  // Direkt aus einer Wischgeste geöffnet → Zurück schließt das Sheet
+  const back = () => (initialMode === "view" ? setMode("view") : onClose());
 
   if (item.isLoading) {
     return (
@@ -31,8 +34,8 @@ function ItemSheetInner({ id, onClose }: { id: string; onClose: () => void }) {
     );
   }
   const it = item.data;
-  if (mode === "remove") return <RemoveView item={it} onBack={() => setMode("view")} onDone={onClose} />;
-  if (mode === "edit") return <EditView item={it} onBack={() => setMode("view")} />;
+  if (mode === "remove" && it.status === "active") return <RemoveView item={it} onBack={back} onDone={onClose} />;
+  if (mode === "edit" && it.status === "active") return <EditView item={it} onBack={back} />;
   return <DetailView item={it} onClose={onClose} onRemove={() => setMode("remove")} onEdit={() => setMode("edit")} />;
 }
 
@@ -49,8 +52,10 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 function DetailView({ item, onClose, onRemove, onEdit }: { item: Item; onClose: () => void; onRemove: () => void; onEdit: () => void }) {
   const iconFor = useCategoryIcon();
+  const categoryInfo = useCategoryInfo();
   const meta = useMeta();
   const appliances = useAppliances();
+  const settings = useUserSettings();
   const { toast } = useUi();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -58,7 +63,8 @@ function DetailView({ item, onClose, onRemove, onEdit }: { item: Item; onClose: 
   const [restoreTo, setRestoreTo] = useState("");
   const archived = item.status === "archived";
   const reason = meta.data?.removalReasons.find((r) => r.id === item.removalReason);
-  const category = meta.data?.categories.find((c) => c.id === item.category);
+  const category = categoryInfo(item.category);
+  const compartment = appliances.data?.flatMap((a) => a.compartments).find((c) => c.id === item.compartmentId);
 
   async function restore() {
     setBusy(true);
@@ -183,6 +189,12 @@ function DetailView({ item, onClose, onRemove, onEdit }: { item: Item; onClose: 
         <Row label="Haltbar bis">{item.bestBefore ? formatDate(item.bestBefore) : <span className="text-ink-faint">nicht angegeben</span>}</Row>
         {item.note && <Row label="Notiz">{item.note}</Row>}
       </dl>
+      {!archived && settings.data?.mode === "extended" && compartment && (
+        <section className="mt-4 rounded-2xl bg-frost p-3">
+          <h3 className="mb-2 text-sm font-medium text-ink-soft">Platz im Fach „{compartment.name}“</h3>
+          <PlacementEditor item={item} compartment={compartment} />
+        </section>
+      )}
       <div className="mt-3">
         <ErrorNote error={error} />
       </div>
@@ -284,7 +296,9 @@ function RemoveView({ item, onBack, onDone }: { item: Item; onBack: () => void; 
 /* ---------------- Bearbeiten / Umlagern ---------------- */
 
 function EditView({ item, onBack }: { item: Item; onBack: () => void }) {
-  const meta = useMeta();
+  // Auch ausgeblendete Kategorien, damit die aktuelle Kategorie des Artikels auswählbar bleibt
+  const categories = useCategories({ includeHidden: true });
+  const units = useUnits();
   const appliances = useAppliances();
   const { toast } = useUi();
   const [f, setF] = useState({
@@ -387,7 +401,7 @@ function EditView({ item, onBack }: { item: Item; onBack: () => void }) {
         <label className="block">
           <span className="field-label">Kategorie</span>
           <select className="input" value={f.category} onChange={(e) => set({ category: e.target.value })}>
-            {meta.data?.categories.map((c) => (
+            {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon} {c.label}
               </option>
@@ -430,7 +444,7 @@ function EditView({ item, onBack }: { item: Item; onBack: () => void }) {
             <span className="field-label">Einheit</span>
             <input className="input" list="units-edit" value={f.unit} onChange={(e) => set({ unit: e.target.value })} />
             <datalist id="units-edit">
-              {meta.data?.units.map((u) => <option key={u} value={u} />)}
+              {units.map((u) => <option key={u} value={u} />)}
             </datalist>
           </label>
         </div>

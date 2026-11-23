@@ -2,6 +2,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -15,6 +16,16 @@ import {
 /* ------------------------------------------------------------------ */
 
 export const applianceType = pgEnum("appliance_type", ["fridge", "freezer"]);
+/** Bauform: stehend (Tür vorne) oder Truhe (Deckel oben). */
+export const applianceLayout = pgEnum("appliance_layout", ["upright", "chest"]);
+/** Art eines Fachs – bestimmt die Darstellung im erweiterten Modus. */
+export const compartmentKind = pgEnum("compartment_kind", [
+  "shelf",
+  "drawer",
+  "door",
+  "basket",
+  "bottle",
+]);
 export const itemStatus = pgEnum("item_status", ["active", "archived"]);
 export const removalReason = pgEnum("removal_reason", [
   "consumed",
@@ -75,6 +86,7 @@ export const appliances = pgTable(
     name: text("name").notNull(),
     location: text("location"),
     type: applianceType("type").notNull().default("fridge"),
+    layout: applianceLayout("layout").notNull().default("upright"),
     color: text("color"),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: createdAt(),
@@ -91,6 +103,16 @@ export const compartments = pgTable(
       .references(() => appliances.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
+    kind: compartmentKind("kind").notNull().default("shelf"),
+    /** Abweichende Zone, z. B. Gefrierfach in einem Kühlschrank (Kühl-Gefrier-Kombi). null = wie Gerät. */
+    zone: applianceType("zone"),
+    /** Raster: Breite × Tiefe in Zellen. */
+    gridCols: integer("grid_cols").notNull().default(6),
+    gridRows: integer("grid_rows").notNull().default(3),
+    /** Wie viele Artikel übereinander gestapelt werden dürfen. */
+    maxStack: integer("max_stack").notNull().default(2),
+    /** Höhe des Fachs in Stufen (1–4), nur für die Darstellung. */
+    height: integer("height").notNull().default(2),
   },
   (t) => [index("compartments_appliance_idx").on(t.applianceId)],
 );
@@ -135,6 +157,9 @@ export const presets = pgTable(
     photoId: uuid("photo_id").references(() => photos.id, {
       onDelete: "set null",
     }),
+    /** Standardgröße im Raster. */
+    gridW: integer("grid_w"),
+    gridH: integer("grid_h"),
     createdAt: createdAt(),
   },
   (t) => [index("presets_household_idx").on(t.householdId)],
@@ -175,6 +200,12 @@ export const items = pgTable(
     photoId: uuid("photo_id").references(() => photos.id, {
       onDelete: "set null",
     }),
+    /** Platz im Raster des Fachs (alle null = nicht platziert). */
+    gridX: integer("grid_x"),
+    gridY: integer("grid_y"),
+    gridW: integer("grid_w"),
+    gridH: integer("grid_h"),
+    stackLevel: integer("stack_level"),
     status: itemStatus("status").notNull().default("active"),
     removalReason: removalReason("removal_reason"),
     removedAt: timestamp("removed_at", { withTimezone: true }),
@@ -192,3 +223,25 @@ export const items = pgTable(
     index("items_best_before_idx").on(t.bestBefore),
   ],
 );
+
+/* ------------------------------------------------------------------ */
+/* Einstellungen                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Einstellungen, die für alle Mitglieder eines Haushalts gelten. */
+export const householdSettings = pgTable("household_settings", {
+  householdId: uuid("household_id")
+    .primaryKey()
+    .references(() => households.id, { onDelete: "cascade" }),
+  data: jsonb("data").notNull().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Persönliche Einstellungen eines Benutzers. */
+export const userSettings = pgTable("user_settings", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  data: jsonb("data").notNull().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -9,6 +9,14 @@
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>PFS – Kühlschrank-Übersicht</title>
+    <script>
+      // Dunkles Design vor dem ersten Zeichnen setzen (kein helles Aufblitzen)
+      try {
+        var t = localStorage.getItem("pfs:theme") || "auto";
+        var d = t === "dark" || (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = d ? "dark" : "light";
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

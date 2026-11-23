@@ -12,6 +12,44 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/):
 
 ## [Unveröffentlicht]
 
+## [1.1.0] – 2026-11-23
+
+### Hinzugefügt
+
+- **Erweiterter Modus** (in den Einstellungen einschaltbar) mit **2,5D-Ansicht** der Kühlgeräte:
+  - Tür bzw. Truhendeckel öffnet sich perspektivisch, Fächer werden als gekippte Böden gezeigt
+  - **Schubladen herausziehen** (antippen), Türfächer an der Innenseite der Tür, Körbe der Truhe anheben
+  - Artikel liegen als Kacheln in einem **Raster**; gestapelte Artikel sind versetzt dargestellt
+  - **Ziehen & Ablegen** mit Maus und Touch (langes Drücken), auch zwischen Fächern;
+    **Größe ändern** über die Ecke der Kachel; Vorschau zeigt grün/rot, ob der Platz frei ist
+  - **Tastatur:** Pfeiltasten verschieben, Umschalt+Pfeil ändert die Größe
+  - Ampel-Markierung im Gerät, **„Wo ist …?“-Suche** hebt Treffer hervor und öffnet ihre Schubladen
+  - Ablage **„Noch nicht platziert“** mit „Alle einsortieren“
+  - Beim Einlegen Platz wählen: automatisch, selbst wählen oder später; Platz im Artikel-Sheet ändern
+- **Geräte-Editor:** Bauform-Vorlagen (Kühlschrank, Kühl-Gefrier-Kombi, Gefrierschrank, Gefriertruhe,
+  Getränkekühlschrank), Bauform stehend/Truhe, Türfarbe, Fächer sortieren; je Fach Art (Ablage, Schublade,
+  Türfach, Korb, Flaschenablage), Bereich (Kühl-/Gefrierbereich), Breite × Tiefe, Stapelhöhe, Höhe
+- **Gefrierbereich in Kühlschränken** (z. B. Kombi): MHD-Vorschlag nutzt dort die Tiefkühl-Haltbarkeit
+- **Einstellungen für dich:** Design hell/dunkel/automatisch, Dichte, Foto oder Symbol, Animationen reduzieren,
+  Wischgesten, Standard-Kühlgerät, Startseite (Bereiche ein-/ausblenden und sortieren), Optionen des
+  erweiterten Modus (Perspektive, Darstellung, Feldgröße, Namen, Haltbarkeit, Startansicht) mit Live-Vorschau
+- **Einstellungen für den Haushalt:** „Bald fällig“-Schwelle, eigene Kategorien mit Symbol und Farbe,
+  Standardkategorien ausblenden oder umgestalten, eigene Einheiten
+- **Dunkles Design**
+- **Wischgesten** in Listen: nach links entnehmen, nach rechts bearbeiten
+- Startseite: neue Bereiche „Zuletzt eingelegt“ und „Kurzstatistik“
+- Vorlagen merken sich ihre Größe im Raster
+- API: `GET/PATCH /api/settings/me`, `GET/PATCH /api/settings/household`,
+  `POST /api/settings/household/categories`, `PATCH /api/items/:id/placement`,
+  `GET /api/compartments/:id/free`, `PUT /api/appliances/:id/compartments/order`
+- `ROADMAP.md`
+
+### Geändert
+
+- Überall Hover-, Fokus- und Druckzustände; Türen heben sich beim Überfahren an
+- Übergang beim Öffnen eines Kühlgeräts (View Transitions), Ladeplatzhalter statt Kreisel
+- Bestehende Fächer werden bei der Migration eingeordnet (Gemüsefach/Schubladen → Schublade, Tür → Türfach)
+
 ## [1.0.0] – 2026-11-23
 
 Erste Version.
@@ -39,5 +77,6 @@ Erste Version.
 - Versionsanzeige in den Einstellungen und unter `/api/health`
 - CI auf GitHub Actions: Typprüfung, Integrationstests gegen PostgreSQL, Build
 
-[Unveröffentlicht]: https://github.com/n-km/project-fridge-system/compare/v1.0.0...HEAD
+[Unveröffentlicht]: https://github.com/n-km/project-fridge-system/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/n-km/project-fridge-system/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/n-km/project-fridge-system/releases/tag/v1.0.0

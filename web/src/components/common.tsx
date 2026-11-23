@@ -1,7 +1,7 @@
-import { AlertTriangle, CheckCircle2, Clock, Refrigerator, Snowflake, X } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { AlertTriangle, CheckCircle2, Clock, PackageMinus, Pencil, Refrigerator, Snowflake, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { photoUrl, useMeta } from "../api";
+import { photoUrl, useCategories, useSoonDays, useUserSettings } from "../api";
 import { expiryState, expiryText, formatQuantity } from "../lib/dates";
 import type { ApplianceType, Item } from "../types";
 import { useUi } from "../ui";
@@ -38,7 +38,7 @@ export function Sheet({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6">
-      <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-scrim" style={{ animation: "fade-in 160ms ease-out" }} onClick={onClose} aria-hidden />
       <div
         ref={ref}
         tabIndex={-1}
@@ -48,11 +48,11 @@ export function Sheet({
         className={`relative flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-surface shadow-xl outline-none md:rounded-3xl ${
           wide ? "md:max-w-2xl" : "md:max-w-lg"
         }`}
-        style={{ animation: "sheet-up 180ms ease-out" }}
+        style={{ animation: "sheet-up 200ms cubic-bezier(0.2, 0.7, 0.2, 1)" }}
       >
         <div className="flex items-center gap-3 border-b border-line px-5 py-3">
           <div className="min-w-0 flex-1 text-lg font-semibold">{title}</div>
-          <button className="-mr-2 grid size-11 place-items-center rounded-full hover:bg-frost" onClick={onClose} aria-label="Schließen">
+          <button className="icon-btn -mr-2 size-11" onClick={onClose} aria-label="Schließen">
             <X className="size-5" />
           </button>
         </div>
@@ -73,9 +73,13 @@ const EXPIRY_STYLE = {
   none: { cls: "bg-frost text-ink-soft", Icon: null },
 } as const;
 
+export function useExpiry() {
+  const soonDays = useSoonDays();
+  return (bestBefore: string | null) => expiryState(bestBefore, soonDays);
+}
+
 export function ExpiryBadge({ bestBefore, compact }: { bestBefore: string | null; compact?: boolean }) {
-  const meta = useMeta();
-  const state = expiryState(bestBefore, meta.data?.expiringSoonDays);
+  const state = useExpiry()(bestBefore);
   const { cls, Icon } = EXPIRY_STYLE[state];
   if (compact && state === "none") return null;
   return (
@@ -89,28 +93,34 @@ export function ExpiryBadge({ bestBefore, compact }: { bestBefore: string | null
 /* ---------------- Icons & Vorschaubilder ---------------- */
 
 export function useCategoryIcon() {
-  const meta = useMeta();
-  return (category: string, icon?: string | null) =>
-    icon || meta.data?.categories.find((c) => c.id === category)?.icon || "📦";
+  const cats = useCategories({ includeHidden: true });
+  return (category: string, icon?: string | null) => icon || cats.find((c) => c.id === category)?.icon || "📦";
 }
 
-export function ItemThumb({ item, size = 48 }: { item: Pick<Item, "photoId" | "icon" | "category" | "name">; size?: number }) {
+export function useCategoryInfo() {
+  const cats = useCategories({ includeHidden: true });
+  return (category: string) => cats.find((c) => c.id === category);
+}
+
+export function ItemThumb({ item, size }: { item: Pick<Item, "photoId" | "icon" | "category" | "name">; size?: number }) {
   const iconFor = useCategoryIcon();
-  if (item.photoId) {
+  const settings = useUserSettings();
+  const dim = size ? `${size}px` : "var(--thumb)";
+  if (item.photoId && settings.data?.itemDisplay !== "icon") {
     return (
       <img
         src={photoUrl(item.photoId)}
         alt=""
         loading="lazy"
         className="shrink-0 rounded-xl object-cover"
-        style={{ width: size, height: size }}
+        style={{ width: dim, height: dim }}
       />
     );
   }
   return (
     <span
       className="grid shrink-0 place-items-center rounded-xl bg-frost"
-      style={{ width: size, height: size, fontSize: size * 0.55 }}
+      style={{ width: dim, height: dim, fontSize: `calc(${dim} * 0.55)` }}
       aria-hidden
     >
       {iconFor(item.category, item.icon)}
@@ -122,26 +132,138 @@ export function ApplianceIcon({ type, className = "size-5" }: { type: ApplianceT
   return type === "freezer" ? <Snowflake className={className} aria-hidden /> : <Refrigerator className={className} aria-hidden />;
 }
 
-/* ---------------- Artikelzeile ---------------- */
+/* ---------------- Artikelzeile mit Wischgesten ---------------- */
+
+const SWIPE_TRIGGER = 88;
 
 export function ItemRow({ item, showLocation }: { item: Item; showLocation?: boolean }) {
   const { openItem } = useUi();
+  const settings = useUserSettings();
   // In der Geräteansicht steht das Fach schon als Überschrift
   const where = showLocation ? [item.applianceName, item.compartmentName].filter(Boolean).join(", ") : item.position;
-  return (
-    <button
-      onClick={() => openItem(item.id)}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-frost/70"
-    >
+
+  const content = (
+    <>
       <ItemThumb item={item} />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium">{item.name}</span>
-        <span className="block truncate text-sm text-ink-soft">
-          {[formatQuantity(item.quantity, item.unit), where].filter(Boolean).join(" · ")}
-        </span>
+        <span className="block truncate text-sm text-ink-soft">{[formatQuantity(item.quantity, item.unit), where].filter(Boolean).join(" · ")}</span>
       </span>
       <ExpiryBadge bestBefore={item.bestBefore} compact />
-    </button>
+    </>
+  );
+
+  if (settings.data?.swipe === false || item.status !== "active") {
+    return (
+      <button onClick={() => openItem(item.id)} className="row-press flex w-full items-center gap-3 px-3 text-left" style={{ paddingBlock: "var(--row-py)" }}>
+        {content}
+      </button>
+    );
+  }
+  return <SwipeRow item={item}>{content}</SwipeRow>;
+}
+
+/**
+ * Wischen auf Touch-Geräten: nach links = entnehmen, nach rechts = bearbeiten.
+ * Mit Maus/Tastatur verhält sich die Zeile wie ein normaler Knopf.
+ */
+function SwipeRow({ item, children }: { item: Item; children: ReactNode }) {
+  const { openItem } = useUi();
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number; locked: "x" | "y" | null } | null>(null);
+  const swiped = useRef(false);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== "touch") return;
+    start.current = { x: e.clientX, y: e.clientY, locked: null };
+    swiped.current = false;
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const s = start.current;
+    if (!s) return;
+    const mx = e.clientX - s.x;
+    const my = e.clientY - s.y;
+    if (!s.locked && Math.hypot(mx, my) > 8) s.locked = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+    if (s.locked !== "x") return;
+    setDragging(true);
+    // Widerstand jenseits der Auslöseschwelle
+    const limit = SWIPE_TRIGGER * 1.4;
+    setDx(Math.max(-limit, Math.min(limit, mx)));
+  };
+  const finish = () => {
+    const s = start.current;
+    start.current = null;
+    if (!s || s.locked !== "x") return;
+    if (dx <= -SWIPE_TRIGGER) openItem(item.id, "remove");
+    else if (dx >= SWIPE_TRIGGER) openItem(item.id, "edit");
+    swiped.current = Math.abs(dx) > 8;
+    setDragging(false);
+    setDx(0);
+  };
+
+  const reveal = Math.min(1, Math.abs(dx) / SWIPE_TRIGGER);
+  return (
+    <div className="relative overflow-hidden">
+      {/* Aktionen unter der Zeile */}
+      <div className="absolute inset-0 flex items-center justify-between px-5 text-sm font-medium" aria-hidden>
+        <span className="flex items-center gap-2 text-steel" style={{ opacity: dx > 0 ? reveal : 0 }}>
+          <Pencil className="size-5" /> Bearbeiten
+        </span>
+        <span className="flex items-center gap-2 text-expired" style={{ opacity: dx < 0 ? reveal : 0 }}>
+          Entnehmen <PackageMinus className="size-5" />
+        </span>
+      </div>
+      <button
+        onClick={() => {
+          if (swiped.current) {
+            swiped.current = false;
+            return;
+          }
+          openItem(item.id);
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={finish}
+        onPointerCancel={finish}
+        className="row-press relative flex w-full touch-pan-y items-center gap-3 bg-surface px-3 text-left"
+        style={{
+          paddingBlock: "var(--row-py)",
+          transform: `translateX(${dx}px)`,
+          transition: dragging ? "none" : "transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1)",
+        }}
+      >
+        {children}
+      </button>
+    </div>
+  );
+}
+
+/* ---------------- Ladeplatzhalter ---------------- */
+
+export function ListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface" role="status" aria-label="Lädt">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3 px-3" style={{ paddingBlock: "var(--row-py)" }}>
+          <span className="skeleton shrink-0" style={{ width: "var(--thumb)", height: "var(--thumb)" }} />
+          <span className="flex-1 space-y-2">
+            <span className="skeleton block h-4 w-2/5" />
+            <span className="skeleton block h-3 w-3/5" />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function DoorSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="skeleton aspect-[4/5] rounded-[28px]" />
+      ))}
+    </>
   );
 }
 
@@ -173,6 +295,12 @@ export function ErrorNote({ error }: { error: unknown }) {
   );
 }
 
+/* ---------------- Schalter ---------------- */
+
+export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return <button type="button" role="switch" aria-checked={checked} aria-label={label} className="switch" onClick={() => onChange(!checked)} />;
+}
+
 /* ---------------- Toasts ---------------- */
 
 export function Toasts() {
@@ -185,15 +313,16 @@ export function Toasts() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-4 py-3 text-white shadow-lg ${
-            t.tone === "error" ? "bg-expired" : "bg-ink"
+          className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-4 py-3 shadow-lg ${
+            t.tone === "error" ? "bg-expired text-on-expired" : "bg-ink text-surface dark:bg-surface-raised dark:text-ink dark:ring-1 dark:ring-line"
           }`}
-          style={{ animation: "toast-in 160ms ease-out" }}
+          style={{ animation: "toast-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1)" }}
         >
+          <CheckCircle2 className="size-5 shrink-0 opacity-80" aria-hidden />
           <span className="flex-1 text-sm">{t.message}</span>
           {t.action && (
             <button
-              className="rounded-lg px-2 py-1 text-sm font-semibold text-tape hover:bg-white/10"
+              className="rounded-lg px-2 py-1 text-sm font-semibold text-tape transition-colors hover:bg-white/10 dark:text-steel"
               onClick={async () => {
                 dismissToast(t.id);
                 await t.action!.run();

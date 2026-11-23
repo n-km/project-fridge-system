@@ -1,7 +1,7 @@
 import { Search } from "lucide-react";
 import { useDeferredValue, useState } from "react";
 import { useItems, useMeta } from "../api";
-import { Empty, ItemThumb, Spinner } from "../components/common";
+import { Empty, ItemThumb, ListSkeleton } from "../components/common";
 import { formatDate, formatQuantity } from "../lib/dates";
 import { useUi } from "../ui";
 
@@ -29,7 +29,7 @@ export function Archive() {
       </label>
 
       {items.isLoading ? (
-        <Spinner />
+        <ListSkeleton rows={6} />
       ) : !items.data?.length ? (
         <div className="rounded-3xl bg-surface">
           <Empty title={query ? "Nichts gefunden" : "Archiv ist leer"}>
@@ -42,8 +42,8 @@ export function Archive() {
             {items.data.map((i) => {
               const reason = meta.data?.removalReasons.find((r) => r.id === i.removalReason);
               return (
-                <button key={i.id} onClick={() => openItem(i.id)} className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-frost/70">
-                  <ItemThumb item={i} size={44} />
+                <button key={i.id} onClick={() => openItem(i.id)} className="row-press flex w-full items-center gap-3 px-3 text-left" style={{ paddingBlock: "var(--row-py)" }}>
+                  <ItemThumb item={i} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{i.name}</span>
                     <span className="block truncate text-sm text-ink-soft">

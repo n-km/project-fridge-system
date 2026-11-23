@@ -14,6 +14,7 @@ import { authRoutes } from "./routes/auth.js";
 import { itemRoutes } from "./routes/items.js";
 import { presetRoutes } from "./routes/presets.js";
 import { statsRoutes } from "./routes/stats.js";
+import { settingsRoutes } from "./settings.js";
 
 export async function buildApp(db: Db, opts: { logger?: boolean } = {}) {
   const app = Fastify({ logger: opts.logger ?? false, trustProxy: true });
@@ -47,6 +48,7 @@ export async function buildApp(db: Db, opts: { logger?: boolean } = {}) {
   await itemRoutes(app, db);
   await photoRoutes(app, db);
   await statsRoutes(app, db);
+  await settingsRoutes(app, db);
 
   // Gebautes Frontend ausliefern (Produktivbetrieb)
   if (config.webDist && fs.existsSync(config.webDist)) {

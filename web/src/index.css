@@ -4,6 +4,8 @@
 @import "@fontsource/rubik/600.css";
 @import "@fontsource/caveat/600.css";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /*
  * Design-Tokens
  *  frost  – kühler Grundton der App
@@ -11,42 +13,127 @@
  *  steel  – Hauptfarbe (Aktionen, Kühlschrank)
  *  tape   – Klebeband-Etikett (das eine auffällige Element)
  *  fresh / soon / expired – Haltbarkeits-Ampel, immer mit Icon + Text
+ *
+ * Die Werte stehen als Variablen auf :root (hell) und [data-theme="dark"] (dunkel);
+ * Tailwind-Klassen wie bg-frost lesen die Variable, wechseln also automatisch mit.
  */
-@theme {
+:root {
+  --frost: #eef3f2;
+  --frost-deep: #dde7e6;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --ink: #1f2b30;
+  --ink-soft: #52636a;
+  --ink-faint: #7f9095;
+  --line: #d3dfdf;
+
+  --steel: #2d6a88;
+  --steel-dark: #22546d;
+  --steel-tint: #dcebf0;
+  --on-steel: #ffffff;
+  --ice: #e3e7f7;
+  --ice-ink: #3f4f96;
+
+  --tape: #f3df8e;
+  --tape-edge: #e3c962;
+  --tape-ink: #1f2b30;
+
+  --fresh: #2e8b57;
+  --fresh-tint: #e1f1e7;
+  --soon: #a86a00;
+  --soon-tint: #fbefd6;
+  --expired: #c7422e;
+  --expired-tint: #f8e1dc;
+  --on-expired: #ffffff;
+  --given: #4f6fd0;
+
+  --shadow-lift: 0 6px 18px -6px rgb(31 43 48 / 0.22);
+  --scrim: rgb(31 43 48 / 0.4);
+
+  /* Dichte */
+  --row-py: 0.625rem;
+  --thumb: 48px;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --frost: #11181b;
+  --frost-deep: #0b1113;
+  --surface: #192226;
+  --surface-raised: #1f2a2f;
+  --ink: #e3ebed;
+  --ink-soft: #a3b3b8;
+  --ink-faint: #74868c;
+  --line: #2b383d;
+
+  --steel: #67abcb;
+  --steel-dark: #93c7df;
+  --steel-tint: #1d3743;
+  --on-steel: #0b1a21;
+  --ice: #232945;
+  --ice-ink: #b2bcf2;
+
+  --tape: #e7d27f;
+  --tape-edge: #c3a948;
+  --tape-ink: #1f2b30;
+
+  --fresh: #66c891;
+  --fresh-tint: #163126;
+  --soon: #e6ac4a;
+  --soon-tint: #372a12;
+  --expired: #f08a76;
+  --expired-tint: #3d1d17;
+  --on-expired: #2a0d08;
+  --given: #93a7ee;
+
+  --shadow-lift: 0 8px 22px -6px rgb(0 0 0 / 0.6);
+  --scrim: rgb(0 0 0 / 0.55);
+
+  color-scheme: dark;
+}
+
+[data-density="compact"] {
+  --row-py: 0.375rem;
+  --thumb: 40px;
+}
+
+@theme inline {
   --font-sans: "Rubik", ui-sans-serif, system-ui, sans-serif;
   --font-hand: "Caveat", "Comic Sans MS", cursive;
 
-  --color-frost: #eef3f2;
-  --color-frost-deep: #dde7e6;
-  --color-surface: #ffffff;
-  --color-ink: #1f2b30;
-  --color-ink-soft: #52636a;
-  --color-ink-faint: #8a9a9f;
-  --color-line: #d3dfdf;
-
-  --color-steel: #2d6a88;
-  --color-steel-dark: #22546d;
-  --color-steel-tint: #dcebf0;
-  --color-ice: #e3e7f7;
-  --color-ice-ink: #3f4f96;
-
-  --color-tape: #f3df8e;
-  --color-tape-edge: #e3c962;
-
-  --color-fresh: #2e8b57;
-  --color-fresh-tint: #e1f1e7;
-  --color-soon: #b77400;
-  --color-soon-tint: #fbefd6;
-  --color-expired: #c7422e;
-  --color-expired-tint: #f8e1dc;
-
-  --color-given: #4f6fd0;
+  --color-frost: var(--frost);
+  --color-frost-deep: var(--frost-deep);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-steel: var(--steel);
+  --color-steel-dark: var(--steel-dark);
+  --color-steel-tint: var(--steel-tint);
+  --color-on-steel: var(--on-steel);
+  --color-ice: var(--ice);
+  --color-ice-ink: var(--ice-ink);
+  --color-tape: var(--tape);
+  --color-tape-edge: var(--tape-edge);
+  --color-tape-ink: var(--tape-ink);
+  --color-fresh: var(--fresh);
+  --color-fresh-tint: var(--fresh-tint);
+  --color-soon: var(--soon);
+  --color-soon-tint: var(--soon-tint);
+  --color-expired: var(--expired);
+  --color-expired-tint: var(--expired-tint);
+  --color-on-expired: var(--on-expired);
+  --color-given: var(--given);
+  --color-scrim: var(--scrim);
+  --shadow-lift: var(--shadow-lift);
 }
 
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
-    font-feature-settings: "tnum" 0;
   }
   body {
     @apply bg-frost text-ink font-sans antialiased;
@@ -54,10 +141,11 @@
     line-height: 1.5;
   }
   :focus-visible {
-    outline: 3px solid var(--color-steel);
+    outline: 3px solid var(--steel);
     outline-offset: 2px;
     border-radius: 6px;
   }
+  /* Bewegung reduzieren: Systemeinstellung ODER Benutzereinstellung */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -66,49 +154,150 @@
       transition-duration: 0.01ms !important;
     }
   }
+  [data-motion="reduced"] *,
+  [data-motion="reduced"] *::before,
+  [data-motion="reduced"] *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 font-medium transition-colors disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 font-medium select-none;
   min-height: 44px;
+  transition:
+    background-color 120ms,
+    border-color 120ms,
+    transform 90ms ease-out,
+    box-shadow 120ms;
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* Leichtes Anheben beim Überfahren, Eindrücken beim Antippen */
+@utility lift {
+  transition:
+    transform 140ms ease-out,
+    box-shadow 140ms ease-out,
+    border-color 140ms;
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lift);
+    }
+  }
+  &:active {
+    transform: translateY(0) scale(0.985);
+    box-shadow: none;
+  }
+}
+
+/* Zeilen in Listen: Hintergrund beim Überfahren, kurzes Eindrücken */
+@utility row-press {
+  transition:
+    background-color 120ms,
+    transform 90ms ease-out;
+  @media (hover: hover) {
+    &:hover {
+      background-color: color-mix(in oklab, var(--frost) 75%, transparent);
+    }
+  }
+  &:active {
+    background-color: var(--frost);
+  }
 }
 
 @layer components {
   /* Klebeband-Etikett, wie auf Gefrierdosen */
   .tape {
-    @apply font-hand text-ink inline-block px-3 leading-tight;
-    background: var(--color-tape);
-    border-left: 3px dashed var(--color-tape-edge);
-    border-right: 3px dashed var(--color-tape-edge);
+    @apply font-hand inline-block px-3 leading-tight;
+    color: var(--tape-ink);
+    background: var(--tape);
+    border-left: 3px dashed var(--tape-edge);
+    border-right: 3px dashed var(--tape-edge);
     transform: rotate(-1.5deg);
     box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
   }
 
   .btn-primary {
-    @apply btn bg-steel text-white hover:bg-steel-dark;
+    @apply btn bg-steel text-on-steel hover:bg-steel-dark;
   }
   .btn-quiet {
-    @apply btn bg-surface text-ink border border-line hover:bg-frost;
+    @apply btn bg-surface text-ink border border-line hover:border-ink-faint hover:bg-frost;
   }
   .btn-danger {
-    @apply btn bg-expired text-white hover:brightness-95;
+    @apply btn bg-expired text-on-expired hover:brightness-95;
+  }
+  .icon-btn {
+    @apply grid size-10 place-items-center rounded-full text-ink-soft transition-colors hover:bg-frost hover:text-ink active:scale-95;
   }
 
   .field-label {
     @apply block text-sm font-medium text-ink-soft mb-1;
   }
   .input {
-    @apply w-full rounded-xl border border-line bg-surface px-3 text-ink placeholder:text-ink-faint focus:border-steel focus:outline-none;
+    @apply w-full rounded-xl border border-line bg-surface px-3 text-ink placeholder:text-ink-faint transition-colors hover:border-ink-faint focus:border-steel focus:outline-none;
     min-height: 44px;
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-sm text-ink transition-colors;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-sm text-ink select-none;
     min-height: 36px;
+    transition:
+      background-color 120ms,
+      border-color 120ms,
+      transform 90ms ease-out;
+  }
+  @media (hover: hover) {
+    .chip:hover {
+      border-color: var(--ink-faint);
+    }
+  }
+  .chip:active {
+    transform: scale(0.96);
   }
   .chip[aria-pressed="true"] {
     @apply border-steel bg-steel-tint text-steel-dark;
   }
+
+  /* Segment-Umschalter (z. B. Hell/Dunkel/Automatisch) */
+  .segmented {
+    @apply inline-grid auto-cols-fr grid-flow-col rounded-xl bg-frost-deep p-1;
+  }
+  .segmented > button {
+    @apply rounded-lg px-3 py-1.5 text-sm text-ink-soft transition-colors hover:text-ink;
+  }
+  .segmented > button[aria-pressed="true"] {
+    @apply bg-surface font-medium text-ink shadow-sm;
+  }
+
+  /* Ladeplatzhalter */
+  .skeleton {
+    @apply rounded-xl bg-frost-deep;
+    background-image: linear-gradient(90deg, transparent 0, color-mix(in oklab, var(--surface) 55%, transparent) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.3s linear infinite;
+  }
+}
+
+/* Schalter */
+.switch {
+  @apply relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full bg-frost-deep transition-colors;
+}
+.switch[aria-checked="true"] {
+  @apply bg-steel;
+}
+.switch::after {
+  content: "";
+  @apply absolute left-1 size-5 rounded-full bg-surface shadow transition-transform;
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(20px);
 }
 
 @keyframes sheet-up {
@@ -121,5 +310,42 @@
   from {
     transform: translateY(12px);
     opacity: 0;
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--steel) 70%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+/* Übergang Tür → Geräteansicht (View Transitions API) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+::view-transition-group(*) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes drawer-out {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scaleY(0.85);
   }
 }
