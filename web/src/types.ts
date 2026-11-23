@@ -57,6 +57,7 @@ export interface Preset {
 }
 
 export interface Meta {
+  version: string;
   categories: { id: string; label: string; icon: string }[];
   units: string[];
   removalReasons: { id: RemovalReason; label: string; icon: string }[];

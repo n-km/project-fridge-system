@@ -10,6 +10,7 @@ import { items } from "../db/schema.js";
 export async function statsRoutes(app: FastifyInstance, db: Db) {
   /** Stammdaten für das Frontend. */
   app.get("/api/meta", async () => ({
+    version: config.version,
     categories: CATEGORIES,
     units: UNITS,
     removalReasons: REMOVAL_REASONS,
